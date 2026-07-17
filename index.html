@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="siteTitle">أولاد الحاج شعبان - الفخامة والأناقة لجميع أفراد الأسرة</title>
-    
+
+    <!-- إعدادات تثبيت الموقع كتطبيق (PWA) على شاشة الموبايل الرئيسية -->
+    <meta name="theme-color" content="#1e2124">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="شعبان ستور">
+    <link rel="apple-touch-icon" href="5954130394313592350.jpg">
+
     <!-- خط Cairo الفاخر والمميز للعلامات التجارية -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <!-- أيقونات FontAwesome لتجميل العناصر -->
@@ -392,6 +400,17 @@
 
                 <!-- التبويب الثاني: تعديل إعدادات وهوية الموقع العام من لوحة التحكم -->
                 <div id="adminTabSettings" class="hidden">
+                    <!-- كارت صغير لتثبيت لوحة التحكم كتطبيق على شاشة الموبايل الرئيسية -->
+                    <div class="mb-8 bg-bgMain border border-copperAccent/20 rounded-xl p-4 md:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="text-center md:text-right">
+                            <h4 class="text-white font-bold mb-1 text-sm md:text-base"><i class="fa-solid fa-mobile-screen-button text-copperAccent ml-2"></i>ثبّتي لوحة التحكم على موبايلك</h4>
+                            <p class="text-zinc-400 text-xs">افتحي لوحة التحكم زي أي تطبيق عادي من على شاشة موبايلك، بدون ما تفتحي المتصفح كل مرة.</p>
+                        </div>
+                        <button onclick="triggerInstallApp()" id="installAppBtn" class="bg-gradient-to-r from-copperAccent to-[#ecd0bf] text-bgDarker font-bold px-6 py-2.5 rounded-lg hover:scale-105 transition-all text-sm whitespace-nowrap flex-shrink-0">
+                            <i class="fa-solid fa-download ml-2"></i>تثبيت التطبيق
+                        </button>
+                    </div>
+
                     <h3 class="mb-4 text-white font-bold text-lg">تحديث إعدادات واجهة المتجر وقنوات التواصل</h3>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -472,7 +491,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /*
            إعدادات الاتصال بمشروعكم على Firebase
@@ -682,9 +701,12 @@
             document.getElementById('settingInstagram').value = globalSettings.instagramLink;
             document.getElementById('settingTiktok').value = globalSettings.tiktokLink;
             document.getElementById('settingFooterText').value = globalSettings.footerText;
+
+            setupInstallManifest();
         }
 
-        // تزويد السحابة بالبيانات الأولية عند التشغيل الأول (يتطلب دخول المسؤول حسب قواعد الأمان)
+        // تزويد السحابة بالبيانات الأولية عند التشغيل الأول فقط (مرة واحدة إلى الأبد)
+        // بعد كدا لو مسحتي كل المنتجات هتفضل فاضية ومش هترجع تاني، لأننا بنسجل علامة "تم التزويد" دائمة في السحابة
         async function seedDatabase() {
             if (!auth.currentUser) {
                 document.getElementById('loadingIndicator').classList.add('hidden');
@@ -693,6 +715,17 @@
                 return;
             }
             try {
+                const seedStatusRef = doc(db, 'settings', 'seedStatus');
+                const seedSnap = await getDoc(seedStatusRef);
+
+                // لو سبق واتزودت البيانات الأولية قبل كدا، مانضيفهاش تاني حتى لو المخزن فاضي حالياً
+                if (seedSnap.exists() && seedSnap.data().done) {
+                    document.getElementById('loadingIndicator').classList.add('hidden');
+                    document.getElementById('productsGrid').classList.remove('hidden');
+                    renderStoreFront();
+                    return;
+                }
+
                 for (const item of initialProducts) {
                     const docRef = doc(db, 'store_products', item.id);
                     await setDoc(docRef, {
@@ -703,6 +736,9 @@
                         createdAt: Date.now()
                     });
                 }
+
+                // تسجيل علامة دائمة إن التزويد الأولي تم، عشان منم نكرره تاني أبداً
+                await setDoc(seedStatusRef, { done: true, seededAt: Date.now() });
             } catch (error) {
                 console.error("Database seed error: ", error);
             }
@@ -1086,6 +1122,55 @@
             openAdminModal();
         });
 
+        // إنشاء ملف تعريف تطبيق (Manifest) ديناميكياً عشان يمكن تثبيت الموقع كتطبيق على شاشة الموبايل
+        function setupInstallManifest() {
+            const iconUrl = (globalSettings && globalSettings.logoImage) ? globalSettings.logoImage : "5954130394313592350.jpg";
+            const manifestData = {
+                name: "أولاد الحاج شعبان - إدارة المتجر",
+                short_name: "شعبان ستور",
+                start_url: window.location.href.split('#')[0],
+                display: "standalone",
+                background_color: "#2c3036",
+                theme_color: "#1e2124",
+                icons: [
+                    { src: iconUrl, sizes: "192x192", type: "image/png" },
+                    { src: iconUrl, sizes: "512x512", type: "image/png" }
+                ]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+            const manifestURL = URL.createObjectURL(manifestBlob);
+
+            let manifestLink = document.getElementById('dynamicManifestLink');
+            if (!manifestLink) {
+                manifestLink = document.createElement('link');
+                manifestLink.id = 'dynamicManifestLink';
+                manifestLink.rel = 'manifest';
+                document.head.appendChild(manifestLink);
+            }
+            manifestLink.href = manifestURL;
+        }
+
+        // التقاط حدث اقتراح التثبيت التلقائي (يعمل على أندرويد وأجهزة الكمبيوتر بمتصفح كروم/إيدج)
+        let deferredInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+        });
+
+        // دالة زر "تثبيت التطبيق" في لوحة التحكم
+        function triggerInstallApp() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                deferredInstallPrompt.userChoice.finally(() => {
+                    deferredInstallPrompt = null;
+                });
+            } else {
+                // على الآيفون (سفاري) مفيش اقتراح تلقائي، فبنوضح الخطوات يدوياً
+                showNotification('لتثبيت التطبيق على الآيفون: افتحي زر المشاركة (Share) بالأسفل ثم اختاري "إضافة إلى الشاشة الرئيسية". وعلى أندرويد اضغطي زر التثبيت مرة أخرى.', 'success');
+            }
+        }
+        window.triggerInstallApp = triggerInstallApp;
+
         // تصدير وتسهيل عمل الدوال لتكون متاحة للـ HTML الديناميكي
         window.filterCategory = filterCategory;
         window.searchProducts = searchProducts;
@@ -1097,6 +1182,7 @@
 
         // تهيئة تشغيل الموقع
         createSparkles();
+        setupInstallManifest();
         startApp();
     </script>
 </body>
