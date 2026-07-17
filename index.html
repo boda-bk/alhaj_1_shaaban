@@ -641,14 +641,11 @@
                     products.push({ id: doc.id, ...doc.data() });
                 });
 
-                if (products.length === 0) {
-                    seedDatabase();
-                } else {
-                    document.getElementById('loadingIndicator').classList.add('hidden');
-                    document.getElementById('productsGrid').classList.remove('hidden');
-                    renderStoreFront();
-                    renderAdminTable();
-                }
+                // لا يوجد أي تزويد تلقائي بمنتجات افتراضية بعد الآن - المخزن يعرض فقط ما تضيفه أنتِ يدوياً
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('productsGrid').classList.remove('hidden');
+                renderStoreFront();
+                renderAdminTable();
             }, (error) => {
                 console.error("Error reading Cloud database: ", error);
                 loadLocalFallback();
@@ -705,44 +702,7 @@
             setupInstallManifest();
         }
 
-        // تزويد السحابة بالبيانات الأولية عند التشغيل الأول فقط (مرة واحدة إلى الأبد)
-        // بعد كدا لو مسحتي كل المنتجات هتفضل فاضية ومش هترجع تاني، لأننا بنسجل علامة "تم التزويد" دائمة في السحابة
-        async function seedDatabase() {
-            if (!auth.currentUser) {
-                document.getElementById('loadingIndicator').classList.add('hidden');
-                document.getElementById('productsGrid').classList.remove('hidden');
-                renderStoreFront();
-                return;
-            }
-            try {
-                const seedStatusRef = doc(db, 'settings', 'seedStatus');
-                const seedSnap = await getDoc(seedStatusRef);
-
-                // لو سبق واتزودت البيانات الأولية قبل كدا، مانضيفهاش تاني حتى لو المخزن فاضي حالياً
-                if (seedSnap.exists() && seedSnap.data().done) {
-                    document.getElementById('loadingIndicator').classList.add('hidden');
-                    document.getElementById('productsGrid').classList.remove('hidden');
-                    renderStoreFront();
-                    return;
-                }
-
-                for (const item of initialProducts) {
-                    const docRef = doc(db, 'store_products', item.id);
-                    await setDoc(docRef, {
-                        title: item.title,
-                        price: item.price,
-                        img: item.img,
-                        cat: item.cat,
-                        createdAt: Date.now()
-                    });
-                }
-
-                // تسجيل علامة دائمة إن التزويد الأولي تم، عشان منم نكرره تاني أبداً
-                await setDoc(seedStatusRef, { done: true, seededAt: Date.now() });
-            } catch (error) {
-                console.error("Database seed error: ", error);
-            }
-        }
+        // ملاحظة: تم إلغاء التزويد التلقائي بالمنتجات الافتراضية نهائياً — المتجر يعرض فقط منتجاتك الحقيقية
 
         // دالة موحّدة لبناء بطاقة منتج واحدة (تُستخدم في العرض العام والبحث لتفادي تكرار الكود)
         function buildProductCard(product) {
