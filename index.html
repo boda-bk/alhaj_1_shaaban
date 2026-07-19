@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="siteTitle">أولاد الحاج شعبان - الفخامة والأناقة لجميع أفراد الأسرة</title>
 
+    <!-- ربط ملف manifest.json للـ PWA 📱 -->
+    <link rel="manifest" href="manifest.json">
+    
     <!-- إعدادات تثبيت الموقع كتطبيق (PWA) على شاشة الموبايل الرئيسية -->
     <meta name="theme-color" content="#1e2124">
     <meta name="mobile-web-app-capable" content="yes">
@@ -423,9 +426,9 @@
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1">
                                 <i class="fa-solid fa-mobile text-copperAccent text-lg"></i>
-                                <span class="text-copperAccent font-bold text-sm">ثبّت تطبيق المتجر على هاتفك</span>
+                                <span class="text-copperAccent font-bold text-sm">ثبّت تطبيق المتجر على هاتفك 📱</span>
                             </div>
-                            <p class="text-zinc-400 text-xs">اضغط على زر التثبيت لإضافة المتجر كتطبيق على شاشتك الرئيسية</p>
+                            <p class="text-zinc-400 text-xs">اضغط على زر التثبيت لإضافة المتجر كتطبيق على شاشتك الرئيسية واستمتعي بالوصول السريع!</p>
                         </div>
                         <button id="installAppBtn" class="bg-gradient-to-r from-copperAccent to-[#ecd0bf] text-bgDarker font-bold py-2 px-6 rounded-lg hover:scale-[1.05] transition-all text-sm flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-download text-sm"></i>
@@ -574,6 +577,19 @@
         let globalSettings = { ...defaultSettings };
         let currentFilter = 'الكل';
         let currentSearch = '';
+
+        // تسجيل Service Worker 🚀
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker تم تسجيله بنجاح:', registration);
+                    })
+                    .catch((error) => {
+                        console.warn('⚠️ Service Worker failed:', error);
+                    });
+            });
+        }
 
         // دالة عرض إشعارات مخصصة بديلة لـ alert
         function showNotification(message, type = 'success') {
