@@ -194,6 +194,22 @@
             border-color: var(--copper-accent);
             color: var(--copper-accent);
         }
+
+        .install-app-banner {
+            background: linear-gradient(135deg, rgba(197, 154, 130, 0.1) 0%, rgba(236, 208, 191, 0.05) 100%);
+            border: 1px solid rgba(197, 154, 130, 0.3);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: space-between;
+        }
+
+        .install-app-banner.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body class="relative min-h-screen">
@@ -402,6 +418,21 @@
                 <div id="adminTabSettings" class="hidden">
                     <h3 class="mb-4 text-white font-bold text-lg">تحديث إعدادات واجهة المتجر وقنوات التواصل</h3>
                     
+                    <!-- بانر تثبيت التطبيق على الهاتف -->
+                    <div class="install-app-banner hidden" id="installAppBanner">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fa-solid fa-mobile text-copperAccent text-lg"></i>
+                                <span class="text-copperAccent font-bold text-sm">ثبّت تطبيق المتجر على هاتفك</span>
+                            </div>
+                            <p class="text-zinc-400 text-xs">اضغط على زر التثبيت لإضافة المتجر كتطبيق على شاشتك الرئيسية</p>
+                        </div>
+                        <button id="installAppBtn" class="bg-gradient-to-r from-copperAccent to-[#ecd0bf] text-bgDarker font-bold py-2 px-6 rounded-lg hover:scale-[1.05] transition-all text-sm flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-download text-sm"></i>
+                            ثبّت الآن
+                        </button>
+                    </div>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
                             <label class="block text-copperAccent font-semibold mb-2 text-sm">العنوان الرئيسي للبانر (Hero Title)</label>
@@ -512,6 +543,9 @@
 
         // رقم الواتساب الافتراضي
         let whatsappNumber = "201012345678"; 
+
+        // متغير لحفظ الـ deferredPrompt الخاص بـ PWA
+        let deferredPrompt;
 
         // قائمة من ستة منتجات أنيقة تليق بالبراند مبدئياً وتعمل بروابط صور حقيقية في أول استخدام
         const initialProducts = [
@@ -1067,6 +1101,33 @@
         // فتح لوحة التحكم بالضغط المزدوج على الشعار الرئيسي للبراند
         document.getElementById('brandLogo').addEventListener('dblclick', () => {
             openAdminModal();
+        });
+
+        // معالج حدث beforeinstallprompt لاكتشاف PWA والسماح بالتثبيت
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBanner = document.getElementById('installAppBanner');
+            installBanner.classList.remove('hidden');
+        });
+
+        // زر تثبيت التطبيق
+        document.getElementById('installAppBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showNotification('تم تثبيت التطبيق على هاتفك بنجاح! 📱');
+                }
+                deferredPrompt = null;
+                document.getElementById('installAppBanner').classList.add('hidden');
+            }
+        });
+
+        // إخفاء بانر التثبيت عند تثبيت التطبيق بنجاح
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('installAppBanner').classList.add('hidden');
+            showNotification('شكراً لتثبيت متجر أولاد الحاج شعبان! ✨');
         });
 
         // تصدير وتسهيل عمل الدوال لتكون متاحة للـ HTML الديناميكي
